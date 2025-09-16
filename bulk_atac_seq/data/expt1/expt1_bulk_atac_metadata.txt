@@ -1,0 +1,14 @@
+Sample	Group
+sgKmt2a_1	sgKmt2a
+sgKmt2a_2	sgKmt2a
+sgKmt2a_3	sgKmt2a
+sgMeaf6_1	sgMeaf6
+sgMeaf6_2	sgMeaf6
+sgMeaf6_3	sgMeaf6
+sgPsip1_1	sgPsip1
+sgPsip1_2	sgPsip1
+sgPsip1_3	sgPsip1
+sgSafe23_1	sgSafe
+sgSafe23_2	sgSafe
+sgSafe23_3	sgSafe
+sgSafe14_1	sgSafe

@@ -1,0 +1,9 @@
+Sample	Group
+Bulk_ATAC_21	sgSafe23
+Bulk_ATAC_22	sgSafe23
+Bulk_ATAC_23	sgKat7
+Bulk_ATAC_24	sgKat7
+Bulk_ATAC_25	sgKat7
+Bulk_ATAC_26	sgSafe23
+Bulk_ATAC_27	sgSafe23
+Bulk_ATAC_28	sgKat7
