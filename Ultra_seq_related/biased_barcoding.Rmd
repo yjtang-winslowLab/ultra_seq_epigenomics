@@ -1,0 +1,84 @@
+---
+title: "Shannon Diversity Analysis of bU6 barcodes"
+author: "Yuning J. Tang"
+affiliation: "Dept of Genetics, Stanford University"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(ggplot2)
+```
+
+# Background
+The total information content encoded in the U6 barcodes is up to 40 bits, with 20 nucelotides, where each nucleotide carrying 2 bits of information. To quantify how nucleotide biases in the barcode affect the information content, we can use Shannon entropy. Shannon entropy measures the amount of information contained within a system and depends on the probability distribution of its components. In our case, the probability distribution corresponds to the relative frequency of each nucleotide within the barcode.
+
+In an ideal barcoding experiment, all the nucleotides are equally represented at 25%. We can compute the Shannon Entropy.
+
+```{r}
+# Define nucleotide probabilities (ideal scenario)
+p_T <- 0.25
+p_A <- 0.25
+p_C <- 0.25
+p_G <- 0.25
+
+# Calculate Shannon entropy (maximum entropy scenario)
+max_entropy <- -(p_T * log2(p_T) + p_A * log2(p_A) + p_C * log2(p_C) + p_G * log2(p_G))
+
+# Print the result
+cat("Maximum Shannon Entropy (bits per nucleotide):", max_entropy, "\n")
+```
+
+Suppose we have a bias toward T in the system. where Ts are over-represented at 60%.
+
+```{r}
+# Define nucleotide probabilities (biased scenario)
+p_T <- 0.60
+p_A <-  (1 - p_T)/3
+p_C <-  (1 - p_T)/3
+p_G <-  (1 - p_T)/3
+
+# Calculate Shannon entropy (biased scenario)
+biased_entropy <- -(p_T * log2(p_T) + p_A * log2(p_A) + p_C * log2(p_C) + p_G * log2(p_G))
+
+# Print the result
+cat("Biased Shannon Entropy (bits per nucleotide):", biased_entropy, "\n")
+```
+
+The decrease in information can be calculated as
+
+```{r}
+# Calculate relative decrease in entropy
+delta_entropy <- (max_entropy - biased_entropy) / max_entropy
+
+# Print the result as a percentage
+cat("Relative decrease in entropy due to bias:", delta_entropy * 100, "%\n")
+```
+
+The total barcode combination as a result of the bias can be determined as 
+
+```{r}
+# Barcode length (number of nucleotides)
+barcode_length <- 12
+
+# Calculate total entropy for the barcode under biased conditions
+total_biased_entropy <- biased_entropy * barcode_length
+
+# Calculate the number of possible barcode combinations under biased conditions
+total_combinations_biased <- 2^total_biased_entropy
+
+# Calculate the maximum possible barcode combinations (ideal conditions)
+total_combinations_max <- 2^(max_entropy * barcode_length)
+
+# Calculate the relative reduction in barcode combinations due to nucleotide bias
+delta_combination <- total_combinations_biased / total_combinations_max
+
+# Print the results
+cat("Total possible barcode combinations under biased conditions:", total_combinations_biased, "\n")
+cat("Maximum possible barcode combinations (ideal conditions):", total_combinations_max, "\n")
+cat("Relative proportion of combinations retained under bias:", delta_combination * 100, "%\n")
+```
+

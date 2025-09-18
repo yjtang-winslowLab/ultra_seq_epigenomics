@@ -1,0 +1,351 @@
+---
+title: "Barcode-sgRNA Collision Approximation"
+author: "Yuning J. Tang"
+affiliation: "Dept Genetics, Stanford University"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(ggplot2)
+```
+
+# 1. Introduction
+
+As a supplement to our manuscript (Tang et al.), I provide here some simple calculations to help suggest the total number of barcode-sgRNA combinations required for high-throughput, quantitative CRISPR analyses with clonal resolution. A primary concern in these experiments is barcode-sgRNA collision, which occurs when two or more distinct clonal growths (e.g., tumors or clones) are transduced with the same barcode-sgRNA.  This mislabeling risks merging biological effects and corrupts quantification of genotype-specific phenotypes in pooled CRISPR screens. Two approaches to approximate the probability of barcode-sgRNA collisions: the Birthday Paradox approximation and the Poisson distribution method are included.
+
+# 2. Definitions
+Collision: Two or more clonal growths (e.g., tumors) receive the same barcode-sgRNA label.
+Total Barcode-sgRNA Combinations (n): Number of unique labels available.
+Number of Clones/Tumors (k): Number of unique growths analyzed per replicate/mouse.
+Assumption: Each clone receives exactly one randomly selected barcode-sgRNA, and all are equally likely.
+
+
+# 3. The Birthday Paradox
+
+The Birthday Paradox calculates the likelihood of two or more individuals sharing the same birthday in a group.
+
+We adapt the Birthday Paradox variables as follows:
+  Birthdays → barcode-sgRNA combinations
+  People → number of successfully transduced barcode-sgRNA combinations (e.g., tumors/clones)
+  Room → experimental model (e.g., mouse, cell culture plate, etc.)
+
+## 3.1. Sample Calculation
+```{r}
+n <- 500000  # Total unique barcode-sgRNA combinations (e.g., total colony count when barcoding plasmid vector)
+k <- 15000   # Number of clonal growths per replicate (e.g., number of tumors in a mouse)
+
+prob_no_collision <- 1
+
+for (i in 0:(k - 1)) {
+  prob_no_collision <- prob_no_collision * (n - i) / n
+}
+
+prob_at_least_one_collision <- 1 - prob_no_collision
+
+print(paste0("The probability of at least one barcode-sgRNA collision is approximately ", prob_at_least_one_collision * 100, "%."))
+```
+
+At first glance, the probability of at least one barcode-sgRNA collision among 500,000 unique barcode-sgRNA combinations may appear surprisingly high. However, it is important to consider the expected number of collision events in the context of our CRISPR experiment. If the expected number of barcode-sgRNA collisions is small relative to the total number of clonal growths, the overall impact of these collisions on data quality will be minimal.
+
+For any given pair of barcode-sgRNA combinations, the probability of collision is (1/n), where (n) is the total number of unique barcode-sgRNA combinations. To calculate the expected number of collisions, we first determine the total number of ways two barcode-sgRNA combinations can be selected, and then divide this number by the total number of unique barcode-sgRNA combinations (n).
+
+```{r}
+# Calculate expected number of collisions using combinatorial approximation
+expected_collisions <- choose(k, 2) / n
+
+# Calculate collisions as a percentage of clonal growth in a mouse 
+collision_percentage <- (expected_collisions * 2 / k) * 100  # multiply by 2 because each collision involves at least two barcode-sgRNA combinations. Any barocde-sgRNA collision impacts at least 2 tumors from the data. 
+
+# Display results clearly
+cat(sprintf("The expected number of barcode-sgRNA collisions is approximately %.2f.\n", expected_collisions))
+cat(sprintf("Collisions represent approximately %.4f%% of total barcode-sgRNA combinations transduced.\n", collision_percentage))
+
+```
+
+Precise Calculation (Including Higher-Order Collisions)
+For a more accurate estimate, we account for higher-order collisions (e.g., three or more clonal growths sharing the same barcode-sgRNA).
+```{r}
+prob_no_clone <- (1 - 1/n)^k  # Probability that none of the barcode-sgRNA collide. 
+prob_exactly_one_clone <- (k/n) * (1 - 1/n)^(k - 1)  # Probability that exactly one barcode-sgRNA collide
+collision_prob <- 1 - prob_no_clone - prob_exactly_one_clone  # Probability that two or more barcode-sgRNA collide
+expected_collision_barcodes <- n * collision_prob  # Expected number of barcode-sgRNA collisions
+
+# Collisions as a percentage of total clonal growths (precise calculation)
+collision_percentage <- (expected_collision_barcodes * 2 / k) * 100
+
+# Display precise results
+cat(sprintf("Precise calculation (includes higher-order collisions):\n"))
+cat(sprintf("The expected number of barcode-sgRNA collisions is approximately %.2f.\n", expected_collision_barcodes))
+cat(sprintf("Collisions represent approximately %.4f%% of total clonal growths.\n", collision_percentage))
+
+# the output here will not change much because higher order collisions are very rare. 
+```
+
+
+## 3.2 Test a range of parameters
+
+We can create a function to test a range of (n) values to better understand the relationship between total barcode-sgRNA diversity and collision events. Here, I assume the number of clonal growths per replicate/mouse (k) is constant, as this is usually fixed by the experimental model and methods.
+
+```{r}
+collision_events <- function(n, k) {
+  # Probability that a given barcode-sgRNA is NOT chosen by any clone
+  prob_no_clone <- (1 - 1/n)^k
+  # Probability that a given barcode-sgRNA is chosen by exactly one clone
+  prob_exactly_one_clone <- (k/n) * (1 - 1/n)^(k - 1)
+  # Probability that a given barcode-sgRNA is chosen by two or more clones (collision)
+  collision_prob <- 1 - prob_no_clone - prob_exactly_one_clone
+  # Expected number of barcode-sgRNA collisions across all barcode-sgRNA combinations
+  expected_collision_events <- n * collision_prob
+  # Percentage of collision events relative to total clones
+  collision_percentage <- (expected_collision_events * 2 / k) * 100 
+  
+  return(collision_percentage)
+}
+
+```
+
+```{r}
+# Parameters
+num_clones <- 10000  # Fixed number of clones per replicate
+barcode_range <- seq(10000, 50000, by = 1000)  # Range of total barcode-sgRNA combinations
+
+# Calculate expected collision percentages across the barcode range
+collision_event_pct <- sapply(barcode_range, collision_events, k = num_clones)
+
+# Create a data frame for plotting
+collision_data <- data.frame(
+  Total_Barcodes = barcode_range,
+  Collision_Percentage = collision_event_pct
+)
+
+```
+
+## 3.3 Visualization
+```{r}
+ggplot(collision_data, aes(x = Total_Barcodes, y = Collision_Percentage)) +
+  geom_line(color = "steelblue", size = 1.2) +
+  geom_point(color = "black", size = 1) +
+  labs(title = "Expected Barcode-sgRNA Collision Percentage vs. Total Barcode-sgRNA Combinations",
+       subtitle = paste("Number of clones per mouse =", num_clones),
+       x = "Total Barcode-sgRNA Combinations (log scale)",
+       y = "Expected Collision Percentage (%) (log scale)") +
+  theme_minimal()
+
+```
+
+# 4. The Poisson Distribution Approach
+
+The Poisson distribution provides an alternative method to approximate the probability of barcode-sgRNA collisions. This approach is particularly useful for large values of n and k.
+
+## 4.1 Sample Calcuation
+```{r}
+k <- 15000 # Number of tumor clones per mouse
+n <- 500000 # Total number of unique barcode-sgRNA combinations in your experiment
+
+lambda <- choose(k, 2) / n # Expected number of two-clone combinations per barcode-sgRNA
+
+# Probability of no collision P(0), e^(-λ)
+p_0 <- exp(-lambda)
+
+prob_at_least_one_collision <- 1 - p_0
+
+cat("Probability of ≥1 collision:", prob_at_least_one_collision, "\n")
+
+```
+
+## 4.2 Test a range of paramters
+```{r}
+# Function to calculate expected collision percentage using Poisson approximation
+poisson_expected_collision <- function(n, k) {
+  lambda <- choose(k, 2) / n
+  collision_events_pct <- (lambda * 2 / k) * 100
+  return(collision_events_pct) # percentage of clones involved in collisions
+}
+```
+
+```{r}
+# Parameters
+num_clones <- 20000  # Number of clones per replicate
+barcode_range <- seq(20000, 80000, by = 1000)  # Range of barcode-sgRNA combinations
+
+# Calculate expected collision percentages across the barcode range
+collision_event_pct <- sapply(barcode_range, poisson_expected_collision, k = num_clones)
+
+# Create a data frame for plotting
+poisson_collision_data <- data.frame(
+  Total_Barcodes = barcode_range,
+  Collision_Percentage = collision_event_pct
+)
+```
+
+## 4.3 Visualization
+```{r}
+ggplot(poisson_collision_data, aes(x = Total_Barcodes, y = Collision_Percentage)) +
+  geom_line(color = "steelblue", size = 1.2) +
+  geom_point(color = "black", size = 1.5) +
+  scale_x_continuous(labels = scales::comma) +
+  labs(title = "Poisson Approximation: Expected Collision Percentage vs. Total Barcode-sgRNA Combinations",
+       subtitle = paste("Number of clones per replicate =", num_clones),
+       x = "Total Barcode-sgRNA Combinations",
+       y = "Expected Collision Percentage (%)") +
+  theme_minimal()
+```
+
+# 5. Barcode collison on data quality
+
+To understand the impact of barcode collision on your data, we will use some data based on our previous in vivo experiments. We found that tumor size distribution in mouse from gene perturbation are best described by log-normal distribution. For a moderate sized experiment, we can get around 3,000 tumors per sgRNA. We can simulate the impact of barcode-sgRNA contamination on the data stringently by looking at a moderate tumor suppressor gene that increase tumor size by 1.5. 
+
+## 5.1 Simulate data contamination from barcode-sgRNA collisions
+```{r}
+# Function to calculate log-normal parameters from desired mean and sd
+get_lognorm_params <- function(mean, sd) {
+  mu <- log((mean^2) / sqrt(sd^2 + mean^2))
+  sigma <- sqrt(log(1 + (sd^2 / mean^2)))
+  return(list(mu = mu, sigma = sigma))
+}
+
+# Simulate baseline data
+simulate_data <- function(n, mean, sd) {
+  params <- get_lognorm_params(mean, sd)
+  rlnorm(n, meanlog = params$mu, sdlog = params$sigma)
+}
+```
+
+```{r}
+simulate_collision <- function(values, contamination_pct) {
+  
+  n <- length(values)
+  num_to_contaminate <- round(n * contamination_pct)
+  
+  # Ensure an even number of contaminated values for pairing
+  if (num_to_contaminate %% 2 != 0) {
+    num_to_contaminate <- num_to_contaminate - 1
+  }
+  
+  if (num_to_contaminate < 2) {
+    warning("Contamination percentage too low; no contamination performed.")
+    return(values)
+  }
+  
+  # Randomly select indices to contaminate
+  contaminated_indices <- sample(seq_len(n), num_to_contaminate, replace = FALSE)
+  
+  # Pair indices
+  paired_indices <- matrix(contaminated_indices, ncol = 2, byrow = TRUE)
+  
+  contaminated_values <- values
+  
+  # Merge each pair by summing
+  for (i in seq_len(nrow(paired_indices))) {
+    idx1 <- paired_indices[i, 1]
+    idx2 <- paired_indices[i, 2]
+    
+    merged_value <- values[idx1] + values[idx2]
+    
+    # Replace both original values with merged value
+    contaminated_values[c(idx1, idx2)] <- merged_value
+  }
+  
+  return(contaminated_values)
+}
+```
+
+## 5.2 Test a range of parameters
+```{r}
+# Parameters
+num_tumors <- 3000
+control_mean <- 2000
+control_sd <- 700
+tsg_mean <- control_mean * 1.5
+tsg_sd <- 1000
+
+# Generate original data
+control_values <- simulate_data(num_tumors, control_mean, control_sd)
+tsg_values <- simulate_data(num_tumors, tsg_mean, tsg_sd)
+```
+
+```{r}
+# Define contamination percentages to test
+contamination_levels <- c(0, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6)
+```
+
+```{r}
+# Initialize results dataframe
+results <- data.frame(
+  Contamination_Percent = numeric(),
+  Wilcoxon_pvalue = numeric(),
+  TSG_Mean = numeric(),
+  TSG_SD = numeric(),
+  Control_Mean = numeric(),
+  Control_SD = numeric()
+)
+
+# Initialize plot dataframe
+plot_df <- data.frame(
+  TumorSize = numeric(),
+  Group = character(),
+  Contamination = character()
+)
+```
+
+
+```{r}
+# Loop through contamination levels
+for (pct in contamination_levels) {
+  num_contaminated <- round(num_tumors * pct)
+  
+  # Contaminate TSG group
+  tsg_contaminated <- tsg_values
+  if (num_contaminated > 0) {
+    contaminated_indices_tsg <- sample(seq_along(tsg_values), num_contaminated, replace = FALSE)
+    tsg_contaminated[contaminated_indices_tsg] <- tsg_contaminated[contaminated_indices_tsg] * 2
+  }
+  
+  # Contaminate Control group similarly
+  control_contaminated <- control_values
+  if (num_contaminated > 0) {
+    contaminated_indices_control <- sample(seq_along(control_values), num_contaminated, replace = FALSE)
+    control_contaminated[contaminated_indices_control] <- control_contaminated[contaminated_indices_control] * 2
+  }
+  
+  # Perform Wilcoxon test
+  test_result <- wilcox.test(tsg_contaminated, control_contaminated)
+  
+  # Store summary statistics
+  results <- rbind(results, data.frame(
+    Contamination_Percent = pct * 100,
+    Wilcoxon_pvalue = test_result$p.value,
+    TSG_Mean = mean(tsg_contaminated),
+    TSG_SD = sd(tsg_contaminated),
+    Control_Mean = mean(control_contaminated),
+    Control_SD = sd(control_contaminated)
+  ))
+  
+  # Store data for plotting
+  plot_df <- rbind(plot_df, data.frame(
+    TumorSize = c(tsg_contaminated, control_contaminated),
+    Group = rep(c("TSG", "Control"), each = num_tumors),
+    Contamination = paste0(pct * 100, "%")
+  ))
+}
+```
+
+## 5.3 Visualize contamination effect
+```{r}
+# Display summary results
+print(results)
+
+# Facet-wrapped density plot
+ggplot(plot_df, aes(x = TumorSize, fill = Group)) +
+  geom_density(alpha = 0.5) +
+  facet_wrap(~ Contamination, scales = "free_y") +
+  labs(title = "Tumor Size Distributions Across Barcode Contamination Levels",
+       x = "Tumor Size",
+       y = "Density") +
+  theme_minimal()
+```
+
