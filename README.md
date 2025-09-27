@@ -1,8 +1,6 @@
 # ultra_seq_epigenomics
 
-This repository provides code associated with:
-
-**Tang et al., Cancer Discovery 2025**  
+This repository provides code associated with: **Tang et al., Cancer Discovery 2025**  
 [DOI: 10.1158/2159-8290.CD-24-1565](https://doi.org/10.1158/2159-8290.CD-24-1565)
 
 ---
