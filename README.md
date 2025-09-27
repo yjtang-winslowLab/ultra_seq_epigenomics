@@ -8,9 +8,8 @@ This repository provides code associated with: **Tang et al., Cancer Discovery 2
 
 In this study, we developed a novel high-throughput CRISPR-based functional genomics method, **Tuba-seqUltra**, which utilizes tumor barcodes for high-resolution quantification of tumor initiation and growth.
 
-![Method Overview](method_schematics.png)
-
 *Ultra_seq_epigenomics workflow schematic*
+![Method Overview](method_schematics.png)
 
 ---
 ## Manuscript
