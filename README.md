@@ -17,7 +17,7 @@ In this study, we developed a novel high-throughput CRISPR-based functional geno
 ---
 ## Manuscript
 
-## Functional Mapping of Epigenomic Regulators Uncovers Coordinated Tumor Suppression by the HBO1 and MLL1 Complexes**
+## Functional Mapping of Epigenomic Regulators Uncovers Coordinated Tumor Suppression by the HBO1 and MLL1 Complexes
 
 ---
 
